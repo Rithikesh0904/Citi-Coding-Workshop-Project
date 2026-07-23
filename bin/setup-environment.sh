@@ -1524,9 +1524,9 @@ main() {
     install_localstack
 
     # Install data science tools
-    install_jupyter_notebook
-    install_apache_spark
-    install_apache_trino
+#    install_jupyter_notebook
+#    install_apache_spark
+#    install_apache_trino
 
     # Configure services
     configure_sshd
