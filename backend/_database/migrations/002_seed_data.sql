@@ -239,7 +239,6 @@ INSERT INTO expenses (id, budget_line_id, amount, incurred_on, description) VALU
     ('77777777-0000-0000-0000-000000000011', '66666666-0000-0000-0000-000000000008', 22000,  CURRENT_DATE - 20, 'Cloud storage and compute'),
     ('77777777-0000-0000-0000-000000000012', '66666666-0000-0000-0000-000000000004', 66000,  CURRENT_DATE - 8,  'Emergency engineering surge for cutover')
 ON CONFLICT (id) DO NOTHING;
-
 COMMIT;
 
 -- ---------------------------------------------------------------------------

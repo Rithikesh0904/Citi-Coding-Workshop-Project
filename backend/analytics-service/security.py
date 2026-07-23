@@ -118,11 +118,26 @@ def decode_token(token: str) -> dict:
         JWT_SECRET.encode(), signing_input.encode(), hashlib.sha256
     ).digest()
 
+    # A malformed segment raises binascii.Error, which is not a TokenError and
+    # would escape the caller's guard as an unhandled 500.
+    try:
+        signature = _b64url_decode(signature_b64)
+    except Exception:
+        raise TokenError("Malformed token")
+
     # Constant-time comparison prevents timing attacks on the signature.
-    if not hmac.compare_digest(expected, _b64url_decode(signature_b64)):
+    if not hmac.compare_digest(expected, signature):
         raise TokenError("Invalid signature")
 
-    claims = json.loads(_b64url_decode(payload_b64))
+    # Parsed only after the signature verifies, so an unverified payload is
+    # never interpreted.
+    try:
+        claims = json.loads(_b64url_decode(payload_b64))
+    except Exception:
+        raise TokenError("Malformed token")
+
+    if not isinstance(claims, dict):
+        raise TokenError("Malformed token")
     if claims.get("exp", 0) < int(time.time()):
         raise TokenError("Token expired")
     return claims

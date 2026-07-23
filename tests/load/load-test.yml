@@ -1,0 +1,128 @@
+# Artillery load test for the ACME delivery console API.
+#
+# Local:  npx artillery run tests/load/load-test.yml
+# Cloud:  npx artillery run tests/load/load-test.yml \
+#           --target https://d1ehv91jl1r1f2.cloudfront.net
+#
+# Reporting:
+#   npx artillery run tests/load/load-test.yml --output report.json
+#   npx artillery report report.json
+#
+# Targets the read paths a dashboard hits on every load, since those are what
+# real users generate under concurrency.
+#
+# Note when running against the cloud: Aurora Serverless v2 is configured with
+# MinCapacity 0 and pauses after five minutes idle. Send one warm-up request
+# before measuring, or the first samples will include cluster wake-up time and
+# make p95 meaningless.
+
+config:
+  target: "http://localhost:3001"
+  tls:
+    rejectUnauthorized: false
+  phases:
+    - name: "Warm up"
+      duration: 30
+      arrivalRate: 2
+    - name: "Ramp to expected load"
+      duration: 60
+      arrivalRate: 5
+      rampTo: 20
+    - name: "Sustained peak"
+      duration: 60
+      arrivalRate: 20
+  ensure:
+    # Thresholds make this a gate rather than a report.
+    p95: 800
+    maxErrorRate: 1
+
+scenarios:
+  - name: "Dashboard load — the heaviest authenticated read path"
+    weight: 55
+    flow:
+      - post:
+          url: "/api/auth-service/login"
+          json:
+            email: "manager@acme.com"
+            password: "Manager@123"
+          capture:
+            - json: "$.access_token"
+              as: "token"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/project-service/dashboard"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "summary"
+      - get:
+          url: "/api/analytics-service/scores"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/analytics-service/insights"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Forecast — recursive and aggregate queries"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/auth-service/login"
+          json:
+            email: "viewer@acme.com"
+            password: "Viewer@123"
+          capture:
+            - json: "$.access_token"
+              as: "token"
+      - get:
+          url: "/api/analytics-service/forecast"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/project-service/dependencies"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Filtered project search"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth-service/login"
+          json:
+            email: "viewer@acme.com"
+            password: "Viewer@123"
+          capture:
+            - json: "$.access_token"
+              as: "token"
+      - get:
+          url: "/api/project-service/projects?status=active"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Unauthenticated requests are rejected cheaply"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/project-service/dashboard"
+          expect:
+            - statusCode: 401
+      - post:
+          url: "/api/auth-service/login"
+          json:
+            email: "admin@acme.com"
+            password: "WrongPassword"
+          expect:
+            - statusCode: 401

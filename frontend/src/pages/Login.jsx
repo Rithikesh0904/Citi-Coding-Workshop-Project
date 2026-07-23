@@ -265,10 +265,11 @@ export default function Login() {
                 sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                 <ArrowBackIcon fontSize="inherit" /> Back to sign in
               </Link>
-            )}
+           )}
           </Box>
         </CardContent>
       </Card>
     </Box>
   );
 }
+ 
