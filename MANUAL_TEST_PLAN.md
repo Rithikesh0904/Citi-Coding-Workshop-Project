@@ -4,7 +4,7 @@ Executed against the local environment (`./bin/start-dev.sh`, browser at
 http://localhost:3000) with a cloud confirmation pass against
 https://d1ehv91jl1r1f2.cloudfront.net.
 
-**Result: 104 of 105 checks passed. One not executed (8.6, see below).**
+**Result: 104 of 105 checks passed. One not executed (8.4, see below).**
 
 Every write performed during this run is independently recorded by the database
 audit triggers — see section 9. That log was written by the database, not
